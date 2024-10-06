@@ -239,6 +239,45 @@ def purchase_data_subcription():
 
     if result:
         return result
+# query data transaction status
+
+@app.route('/api/vtpass-data-status', methods=['POST'])
+def query_purchase_data_subcription():
+    data = request.json
+    request_id = data.get("request_id")
+
+    headers = {
+         'api-key': API_KEY,
+         'secret-key': SECRET_KEY,
+         'Content-Type': 'application/json' 
+        
+    }
+
+    # Payload (data) that will be sent to VTpass API
+    payload = {
+        'request_id':request_id,
+        
+    }
+    try:
+        # Make a POST request to VTpass API
+        VT_SANDBOX_URL_PURCHASE = os.getenv('VT_SANDBOX_URL_PURCHASE_DATA_STATUS')
+        response = requests.post(VT_SANDBOX_URL_PURCHASE, headers=headers, json=payload)
+        if response.status_code == 200:
+            data = response.json()  
+            return data
+        else:
+            return jsonify({
+                "error": "Could query status",
+                "status_code": response.status_code,
+                "message": response.text
+            }), response.status_code
+        # return response.json() 
+    except Exception as e:
+        return jsonify({"status": False, "message": "Could not connect to the apiendpoint", "error": str(e)}), 500
+
+
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
