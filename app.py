@@ -18,6 +18,16 @@ PUBLIC_KEY = os.getenv('PUBLIC_KEY')
 SECRET_KEY =os.getenv('SECRET_KEY')
 headers = {'api-key': API_KEY,'public-key': PUBLIC_KEY}
 
+serviceId ={
+        "mtn":"mtn-data",
+        "airtel": "airtel-data",
+        "glo": "glo-data",
+        "glo-sme": "glo-sme-data",
+        "etisalat":"etisalat-data",
+        "etisalat-sme": "9mobile-sme-data"
+
+    }
+
 @app.route("/")
 def hello_world():
     return {
@@ -131,21 +141,13 @@ def purchase():
 
     if result:
         return result
-#Data subcription
-@app.route('/get-variation-code', methods=['GET'])
-def get_variation_codes():
-    url = "https://sandbox.vtpass.com/api/service-variations?serviceID=mtn-data"
-    response = requests.get(url, headers = headers)
-    data = response.json()
-    
-    return jsonify(data)
 
+# Transaction status for anytime purchase
 @app.route('/transaction-status', methods=['POST'])
 def check_transaction_status():
     header = {'api-key': API_KEY,'public-key': PUBLIC_KEY,'secret-key': SECRET_KEY}
     try:
-        # Extract the request_id from the incoming JSON request
-        # request_id = request.json['request_id']
+        
         
         # VTpass transaction status endpoint
         url = "https://sandbox.vtpass.com/api/requery"
@@ -166,5 +168,77 @@ def check_transaction_status():
 
     except Exception as e:
         return jsonify({"error": str(e)})
+    
+# Data subcription
+@app.route('/get-variation-code', methods=['GET'])
+def get_variation_codes():
+    
+    network= request.json  
+    network = network.get('network')  
+    url = os.getenv("VT_SANDBOX_URL_VARIATION_CODE")
+    url="{}{}".format(url,serviceId[network])
+    response = requests.get(url, headers = headers)
+    data = response.json()
+    
+    return jsonify(data)
+
+# Making payment 
+
+# function that does the actual purchasing
+def purchase_data(phone_number ,service_id_code, variation_code):
+    headers = {
+         'api-key': API_KEY,
+         'secret-key': SECRET_KEY,
+         'Content-Type': 'application/json' 
+        
+    }
+
+    # Payload (data) that will be sent to VTpass API
+    payload = {
+        'request_id':generate_request_id(),
+        'serviceID': serviceId[service_id_code],
+        'phone':phone_number,
+        # 'amount': amount,
+        'billersCode': phone_number,
+        'variation_code': variation_code
+        
+    }
+
+    try:
+        # Make a POST request to VTpass API
+        VT_SANDBOX_URL_PURCHASE = os.getenv('VT_SANDBOX_URL_PURCHASE_DATA')
+        response = requests.post(VT_SANDBOX_URL_PURCHASE, headers=headers, json=payload)
+        if response.status_code == 200:
+            data = response.json()  
+            return data
+        else:
+            return jsonify({
+                "error": "Could not make purchase",
+                "status_code": response.status_code,
+                "message": response.text
+            }), response.status_code
+        # return response.json() 
+    except Exception as e:
+        return jsonify({"status": False, "message": "Could not connect to the apiendpoint", "error": str(e)}), 500
+
+
+# Buying data
+@app.route('/api/vtpass-purchase-data', methods=['POST'])
+def purchase_data_subcription():
+    data = request.json  
+    phone_number = data.get('phone')  
+    # amount = data.get('amount')
+    service_id = data.get('serviceId')
+    variation_code = data.get('variationCode')
+
+    if not phone_number or not variation_code or not service_id: 
+        return jsonify({"error": "Phone number and amount are required"}), 400
+
+    # Call the purchase_product function to interact with VTpass API
+    result = purchase_data(phone_number, service_id,variation_code)
+
+    if result:
+        return result
+
 if __name__ == "__main__":
     app.run(debug=True)
