@@ -28,6 +28,11 @@ serviceId ={
 
     }
 
+cableServiceId ={
+        "dstv": "dstv"
+    }
+
+
 @app.route("/")
 def hello_world():
     return {
@@ -170,7 +175,7 @@ def check_transaction_status():
         return jsonify({"error": str(e)})
     
 # Data subcription
-@app.route('/get-variation-code', methods=['GET'])
+@app.route('/get-data-variation-code', methods=['GET'])
 def get_variation_codes():
     
     network= request.json  
@@ -276,8 +281,20 @@ def query_purchase_data_subcription():
         return jsonify({"status": False, "message": "Could not connect to the apiendpoint", "error": str(e)}), 500
 
 
-
-
+#Cable Subcription
+#Getting variatin code
+# Data subcription
+@app.route('/api/get-cable-variation-code', methods=['GET'])
+def get_variation_cable__codes():
+    
+    cable= request.json  
+    cableId = cable.get('cableType')  
+    url = os.getenv("VT_SANDBOX_URL_CABLE_VARIATION_CODE")
+    url="{}{}".format(url,cableServiceId[cableId])
+    response = requests.get(url, headers = headers)
+    data = response.json()
+    
+    return jsonify(data)
 
 if __name__ == "__main__":
     app.run(debug=True)
