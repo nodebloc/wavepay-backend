@@ -472,8 +472,8 @@ def purchase_electricity():
     }
     try:
         # Make a POST request to VTpass API
-        VT_SANDBOX_URL_PURCHASE = os.getenv('VT_SANDBOX_URL_METER_VERIFY')
-        response = requests.post("https://sandbox.vtpass.com/api/pay", headers=headers, json=payload)
+        VT_SANDBOX_URL_PURCHASE_ELECTRICITY = os.getenv('VT_SANDBOX_URL_PURCHASE_ELECTRICTY')
+        response = requests.post(VT_SANDBOX_URL_PURCHASE_ELECTRICITY, headers=headers, json=payload)
         if response.status_code == 200:
             data = response.json()  
             return data
