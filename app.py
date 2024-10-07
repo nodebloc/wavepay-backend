@@ -29,7 +29,9 @@ serviceId ={
     }
 
 cableServiceId ={
-        "dstv": "dstv"
+        "dstv": "dstv",
+        "gotv": "gotv",
+        "startimes": "startimes"
     }
 
 
@@ -148,7 +150,7 @@ def purchase():
         return result
 
 # Transaction status for anytime purchase
-@app.route('/transaction-status', methods=['POST'])
+@app.route('/api-verify-transaction-status', methods=['POST'])
 def check_transaction_status():
     header = {'api-key': API_KEY,'public-key': PUBLIC_KEY,'secret-key': SECRET_KEY}
     try:
@@ -160,7 +162,7 @@ def check_transaction_status():
         # Payload with the request_id
         # try and set this dynamically
         payload = {
-            "request_id": "202410060616xkK5eoSbHc"
+            "request_id": "202410070901IXNUbX6aPL"
         }
         
         # Send POST request to VTpass with basic auth
@@ -175,7 +177,7 @@ def check_transaction_status():
         return jsonify({"error": str(e)})
     
 # Data subcription
-@app.route('/get-data-variation-code', methods=['GET'])
+@app.route('/api-get-data-variation-code', methods=['GET'])
 def get_variation_codes():
     
     network= request.json  
@@ -282,8 +284,7 @@ def query_purchase_data_subcription():
 
 
 #Cable Subcription
-#Getting variatin code
-# Data subcription
+#Getting variation code
 @app.route('/api/get-cable-variation-code', methods=['GET'])
 def get_variation_cable__codes():
     
@@ -295,6 +296,112 @@ def get_variation_cable__codes():
     data = response.json()
     
     return jsonify(data)
+
+@app.route('/api/vtpass-verify-Smartcard', methods=['POST'])
+def verify_card():
+    data = request.json
+    cardNumber= data.get("cardNumber")
+    serviceId = data.get("serviceID")
+
+    headers = {
+         'api-key': API_KEY,
+         'secret-key': SECRET_KEY,
+         'Content-Type': 'application/json' 
+        
+    }
+
+    # Payload (data) that will be sent to VTpass API
+    payload = {
+        'billersCode':cardNumber,
+        'serviceID':serviceId
+        
+    }
+    try:
+        # Make a POST request to VTpass API
+        VT_SANDBOX_URL_PURCHASE = os.getenv('VT_SANDBOX_URL_VERIFY_SMART_CARD')
+        response = requests.post(VT_SANDBOX_URL_PURCHASE, headers=headers, json=payload)
+        if response.status_code == 200:
+            data = response.json()  
+            return data
+        else:
+            return jsonify({
+                "error": "Could not verify Smart Card",
+                "status_code": response.status_code,
+                "message": response.text
+            }), response.status_code
+        # return response.json() 
+    except Exception as e:
+        return jsonify({"status": False, "message": "Could not connect to the apiendpoint", "error": str(e)}), 500
+
+# Bouque change for 
+@app.route('/api/vtpass-cablesubscription', methods=['POST'])
+def subcribe_bouquetChange():
+    data = request.json
+    serviceID = data.get("serviceID")
+    billersCode = data.get("billersCode")
+    variation_code = data.get("variation_code")
+    amount = data.get("amount")
+    phone = data.get("phone")
+    subscription_type = data.get("subscription_type")
+    quantity = data.get("quantity")
+
+    headers = {
+         'api-key': API_KEY,
+         'secret-key': SECRET_KEY,
+         'Content-Type': 'application/json' 
+        
+    }
+
+    requestID = generate_request_id()
+
+    # Payload (data) that will be sent to VTpass API
+    payload = {
+        'request_id':requestID,
+        'serviceID': serviceID,
+        'billersCode': billersCode,
+        'variation_code': variation_code,
+        'amount': amount,
+        'phone': phone,
+        'subscription_type': subscription_type,
+        'quantity':quantity
+
+    }
+    try:
+        # Make a POST request to VTpass API
+        VT_SANDBOX_URL_PURCHASE = os.getenv('VT_SANDBOX_URL_BOUQUET_CHANGE')
+        response = requests.post(VT_SANDBOX_URL_PURCHASE, headers=headers, json=payload)
+        if response.status_code == 200:
+            # data = response.json()
+            # return {
+            #     "data": data,
+            #     "req": requestID
+            # }
+
+            data = response.json()
+
+            if data['code'] == "000":
+                
+                return {
+                    "data": data,
+                    "req": requestID
+                }
+            else:
+                return {
+                    "status": False,
+                    "error": data['content']['errors'],
+                    "message": "Error",
+                    "reason": "Failed to renew cable subscription"
+                }
+        else:
+            return jsonify({
+                "error": "Could query status", "req": requestID,
+                "status_code": response.status_code,
+                "message": response.text
+            }), response.status_code
+        # return response.json() 
+    except Exception as e:
+        return jsonify({"status": False, "req": requestID, "message": "Could not connect to the apiendpoint", "error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
