@@ -402,6 +402,92 @@ def subcribe_bouquetChange():
     except Exception as e:
         return jsonify({"status": False, "req": requestID, "message": "Could not connect to the apiendpoint", "error": str(e)}), 500
 
+# verify prepaid/post  metercard Number
+@app.route('/api/vtpass-verify-meterNumber', methods=['POST'])
+def verify_meterNumber():
+    data = request.json
+    meterNumber= data.get("billersCode")
+    serviceId = data.get("serviceID")
+    metertype = data.get("type")
+
+    headers = {
+         'api-key': API_KEY,
+         'secret-key': SECRET_KEY,
+         'Content-Type': 'application/json' 
+        
+    }
+
+    # Payload (data) that will be sent to VTpass API
+    payload = {
+        'billersCode':meterNumber,
+        'serviceID':serviceId,
+        'type':metertype
+        
+    }
+    try:
+        # Make a POST request to VTpass API
+        VT_SANDBOX_URL_PURCHASE = os.getenv('VT_SANDBOX_URL_METER_VERIFY')
+        response = requests.post(VT_SANDBOX_URL_PURCHASE, headers=headers, json=payload)
+        if response.status_code == 200:
+            data = response.json()  
+            return data
+        else:
+            return jsonify({
+                "error": "Invalid meter Number",
+                "status_code": response.status_code,
+                "message": response.text
+            }), response.status_code
+        # return response.json() 
+    except Exception as e:
+        return jsonify({"status": False, "message": "Could not connect to the apiendpoint", "error": str(e)}), 500
+
+
+# Purchase  prepaid/post  meter(Electricity)
+@app.route('/api/vtpass-purchaseElectricity', methods=['POST'])
+def purchase_electricity():
+    data = request.json
+    amount = data.get("amount")
+    phone=data.get("phone")
+    meterNumber= data.get("billersCode")
+    serviceId = data.get("serviceID")
+    variation_code =data.get("variation_code")
+
+    headers = {
+         'api-key': API_KEY,
+         'secret-key': SECRET_KEY,
+         'Content-Type': 'application/json' 
+        
+    }
+
+    # Payload (data) that will be sent to VTpass API
+    payload = {
+        'request_id': generate_request_id(),
+        'billersCode':meterNumber,
+        'serviceID':serviceId,
+        'variation_code': variation_code,
+        'amount': amount,
+        'phone':phone
+       
+        
+    }
+    try:
+        # Make a POST request to VTpass API
+        VT_SANDBOX_URL_PURCHASE = os.getenv('VT_SANDBOX_URL_METER_VERIFY')
+        response = requests.post("https://sandbox.vtpass.com/api/pay", headers=headers, json=payload)
+        if response.status_code == 200:
+            data = response.json()  
+            return data
+        else:
+            return jsonify({
+                "error": "Invalid meter Number",
+                "status_code": response.status_code,
+                "message": response.text
+            }), response.status_code
+        # return response.json() 
+    except Exception as e:
+        return jsonify({"status": False, "message": "Could not connect to the apiendpoint", "error": str(e)}), 500
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
