@@ -1,4 +1,4 @@
 # Ignore virtual environments
 wave/
-.env/
+.env
 .venv/

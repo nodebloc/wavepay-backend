@@ -1,4 +1,5 @@
 from flask import Flask,jsonify,request
+from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 import requests
@@ -7,6 +8,7 @@ import string
 from datetime import datetime
 import pytz
 app = Flask(__name__)
+CORS(app)
 # Load environment variables from .env file
 load_dotenv()
 
@@ -134,7 +136,7 @@ def purchase_product(phone_number, amount, service_id):
 @app.route('/api/vtpass-purchase', methods=['POST'])
 def purchase():
     data = request.json  
-    phone_number = data.get('phone')  
+    phone_number = data.get('phone')
     amount = data.get('amount')
     service_id = data.get('serviceId')
 
@@ -175,17 +177,32 @@ def check_transaction_status():
         return jsonify({"error": str(e)})
     
 # Data subcription
-@app.route('/get-data-variation-code', methods=['GET'])
-def get_variation_codes():
-    
-    network= request.json  
-    network = network.get('network')  
-    url = os.getenv("VT_SANDBOX_URL_VARIATION_CODE")
-    url="{}{}".format(url,serviceId[network])
-    response = requests.get(url, headers = headers)
-    data = response.json()
-    
-    return jsonify(data)
+@app.route('/get-data-variation-code/<string:network>', methods=['GET'])
+def get_variation_codes(network):
+    try:
+        # network = data.get('network')
+        if network not in serviceId:
+            return jsonify({"status": False, "error": "Invalid network"}), 400
+
+        url = os.getenv("VT_SANDBOX_URL_VARIATION_CODE")
+        if url is None:
+            return jsonify({"status": False, "error": "Missing environment variable for URL"}), 500
+
+        full_url = f"{url}{serviceId[network]}"
+        response = requests.get(full_url, headers=headers)
+
+        if response.status_code != 200:
+            return jsonify({"status": False, "error": f"Failed to fetch data. Status code: {response.status_code}"}), response.status_code
+
+        try:
+            data = {"data": response.json()["content"]["varations"], "status": True}
+        except ValueError:
+            return jsonify({"status": False, "error": "Invalid JSON response from the server", "response": response.text}), 500
+
+        return jsonify(data)
+
+    except Exception as e:
+        return jsonify({"status": False, "error": str(e)}), 500
 
 # Making payment 
 
